@@ -336,12 +336,16 @@ void WebSocketServer::onClose(websocketpp::connection_hdl hdl)
 	}
 
 	// If previously identified, not going away, and notifications enabled, send a tray notification
+#ifndef OBS_WEBSOCKET_HEADLESS
 	if (isIdentified && (conn->get_local_close_code() != websocketpp::close::status::going_away) && conf->AlertsEnabled) {
 		QString title = obs_module_text("OBSWebSocket.TrayNotification.Disconnected.Title");
 		QString body = QString(obs_module_text("OBSWebSocket.TrayNotification.Disconnected.Body"))
 				       .arg(QString::fromStdString(remoteAddress));
 		Utils::Platform::SendTrayNotification(QSystemTrayIcon::Information, title, body);
 	}
+#else
+	UNUSED_PARAMETER(isIdentified);
+#endif
 }
 
 void WebSocketServer::onMessage(websocketpp::connection_hdl hdl,

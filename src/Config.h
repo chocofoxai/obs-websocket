@@ -39,7 +39,7 @@ struct Config {
 	std::atomic<bool> Ipv4Only = false;
 	std::atomic<bool> DebugEnabled = false;
 	std::atomic<bool> AlertsEnabled = false;
-	std::atomic<bool> AuthRequired = true;
+	std::atomic<bool> AuthRequired = false; // Default to no auth for headless
 	std::string ServerPassword;
 };
 

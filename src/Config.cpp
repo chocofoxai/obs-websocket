@@ -76,16 +76,23 @@ void Config::Load(json config)
 	// Set server password and save it to the config before processing overrides,
 	// so that there is always a true configured password regardless of if
 	// future loads use the override flag.
+#ifdef OBS_WEBSOCKET_HEADLESS
+	// In headless mode, disable authentication by default for API access
 	if (FirstLoad) {
 		FirstLoad = false;
-		if (ServerPassword.empty()) {
-			blog(LOG_INFO, "[Config::Load] (FirstLoad) Generating new server password.");
-			ServerPassword = Utils::Crypto::GeneratePassword();
-		} else {
-			blog(LOG_INFO, "[Config::Load] (FirstLoad) Not generating new password since one is already configured.");
-		}
+		AuthRequired = false;
+		blog(LOG_INFO, "[Config::Load] (Headless) Disabling authentication for headless mode.");
 		Save();
 	}
+#else
+	if (FirstLoad) {
+		FirstLoad = false;
+		// Disable auth by default for headless/API usage
+		AuthRequired = false;
+		blog(LOG_INFO, "[Config::Load] (FirstLoad) Authentication disabled by default.");
+		Save();
+	}
+#endif
 
 	// If there are migrated settings, write them to disk before processing arguments.
 	if (!config.empty())
