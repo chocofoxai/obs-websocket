@@ -78,6 +78,11 @@ std::string Utils::Platform::GetLocalAddress()
 
 QString Utils::Platform::GetCommandLineArgument(QString arg)
 {
+#ifdef OBS_WEBSOCKET_HEADLESS
+	// No QCoreApplication in headless mode, can't parse command line
+	UNUSED_PARAMETER(arg);
+	return "";
+#else
 	QCommandLineParser parser;
 	QCommandLineOption cmdlineOption(arg, arg, arg, "");
 	parser.addOption(cmdlineOption);
@@ -87,18 +92,26 @@ QString Utils::Platform::GetCommandLineArgument(QString arg)
 		return "";
 
 	return parser.value(cmdlineOption);
+#endif
 }
 
 bool Utils::Platform::GetCommandLineFlagSet(QString arg)
 {
+#ifdef OBS_WEBSOCKET_HEADLESS
+	// No QCoreApplication in headless mode, can't parse command line
+	UNUSED_PARAMETER(arg);
+	return false;
+#else
 	QCommandLineParser parser;
 	QCommandLineOption cmdlineOption(arg, arg, arg, "");
 	parser.addOption(cmdlineOption);
 	parser.parse(QCoreApplication::arguments());
 
 	return parser.isSet(cmdlineOption);
+#endif
 }
 
+#ifndef OBS_WEBSOCKET_HEADLESS
 struct SystemTrayNotification {
 	QSystemTrayIcon::MessageIcon icon;
 	QString title;
@@ -125,3 +138,4 @@ void Utils::Platform::SendTrayNotification(QSystemTrayIcon::MessageIcon icon, QS
 		},
 		(void *)notification, false);
 }
+#endif

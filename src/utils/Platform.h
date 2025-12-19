@@ -21,13 +21,17 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include <string>
 #include <QString>
+#ifndef OBS_WEBSOCKET_HEADLESS
 #include <QSystemTrayIcon>
+#endif
 
 namespace Utils {
 	namespace Platform {
 		std::string GetLocalAddress();
 		QString GetCommandLineArgument(QString arg);
 		bool GetCommandLineFlagSet(QString arg);
+#ifndef OBS_WEBSOCKET_HEADLESS
 		void SendTrayNotification(QSystemTrayIcon::MessageIcon icon, QString title, QString body);
+#endif
 	}
 }

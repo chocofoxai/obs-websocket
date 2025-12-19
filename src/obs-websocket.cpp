@@ -17,8 +17,11 @@ You should have received a copy of the GNU General Public License along
 with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
+#ifndef OBS_WEBSOCKET_HEADLESS
 #include <QAction>
 #include <QMainWindow>
+#endif
+
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 
@@ -27,7 +30,10 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include "WebSocketApi.h"
 #include "websocketserver/WebSocketServer.h"
 #include "eventhandler/EventHandler.h"
+
+#ifndef OBS_WEBSOCKET_HEADLESS
 #include "forms/SettingsDialog.h"
+#endif
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-websocket", "en-US")
@@ -46,7 +52,9 @@ ConfigPtr _config;
 EventHandlerPtr _eventHandler;
 WebSocketApiPtr _webSocketApi;
 WebSocketServerPtr _webSocketServer;
+#ifndef OBS_WEBSOCKET_HEADLESS
 SettingsDialog *_settingsDialog = nullptr;
+#endif
 
 void OnWebSocketApiVendorEvent(std::string vendorName, std::string eventType, obs_data_t *obsEventData);
 void OnEvent(uint64_t requiredIntent, std::string eventType, json eventData, uint8_t rpcVersion);
@@ -56,7 +64,11 @@ bool obs_module_load(void)
 {
 	blog(LOG_INFO, "[obs_module_load] you can haz websockets (Version: %s | RPC Version: %d)", OBS_WEBSOCKET_VERSION,
 	     OBS_WEBSOCKET_RPC_VERSION);
+#ifdef OBS_WEBSOCKET_HEADLESS
+	blog(LOG_INFO, "[obs_module_load] Running in HEADLESS mode - UI components disabled");
+#else
 	blog(LOG_INFO, "[obs_module_load] Qt version (compile-time): %s | Qt version (run-time): %s", QT_VERSION_STR, qVersion());
+#endif
 	blog(LOG_INFO, "[obs_module_load] Linked ASIO Version: %d", ASIO_VERSION);
 
 	// Initialize the cpu stats
@@ -87,6 +99,7 @@ bool obs_module_load(void)
 	_webSocketServer->SetClientSubscriptionCallback(std::bind(&EventHandler::ProcessSubscriptionChange, _eventHandler.get(),
 								  std::placeholders::_1, std::placeholders::_2));
 
+#ifndef OBS_WEBSOCKET_HEADLESS
 	// Initialize the settings dialog
 	obs_frontend_push_ui_translation(obs_module_get_string);
 	QMainWindow *mainWindow = static_cast<QMainWindow *>(obs_frontend_get_main_window());
@@ -97,6 +110,9 @@ bool obs_module_load(void)
 	const char *menuActionText = obs_module_text("OBSWebSocket.Settings.DialogTitle");
 	QAction *menuAction = (QAction *)obs_frontend_add_tools_menu_qaction(menuActionText);
 	QObject::connect(menuAction, &QAction::triggered, [] { _settingsDialog->ToggleShowHide(); });
+#else
+	blog(LOG_INFO, "[obs_module_load] Headless mode: Skipping UI initialization");
+#endif
 
 	blog(LOG_INFO, "[obs_module_load] Module loaded.");
 	return true;
@@ -116,11 +132,18 @@ void obs_module_post_load(void)
 	test_register_vendor();
 #endif
 
+#ifdef OBS_WEBSOCKET_HEADLESS
+	// In headless mode, always start the server (config is still respected for port/auth)
+	blog(LOG_INFO, "[obs_module_post_load] Headless mode: Auto-starting WebSocket server...");
+	_webSocketServer->Start();
+	blog(LOG_INFO, "[obs_module_post_load] WebSocket server started on port %d", static_cast<int>(_config->ServerPort.load()));
+#else
 	// Server will accept clients, but requests and events will not be served until FINISHED_LOADING occurs
 	if (_config->ServerEnabled) {
 		blog(LOG_INFO, "[obs_module_post_load] WebSocket server is enabled, starting...");
 		_webSocketServer->Start();
 	}
+#endif
 }
 
 void obs_module_unload(void)

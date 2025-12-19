@@ -108,8 +108,9 @@ void WebSocketServer::ProcessMessage(SessionPtr session, WebSocketServer::Proces
 				ret.closeReason = "Your `authentication` field is not a string.";
 				return;
 			}
-			if (!Utils::Crypto::CheckAuthenticationString(session->Secret(), session->Challenge(),
-								      payloadData["authentication"])) {
+if (!Utils::Crypto::CheckAuthenticationString(session->Secret(), session->Challenge(),
+							      payloadData["authentication"])) {
+#ifndef OBS_WEBSOCKET_HEADLESS
 				auto conf = GetConfig();
 				if (conf && conf->AlertsEnabled) {
 					QString title = obs_module_text("OBSWebSocket.TrayNotification.AuthenticationFailed.Title");
@@ -118,6 +119,7 @@ void WebSocketServer::ProcessMessage(SessionPtr session, WebSocketServer::Proces
 							.arg(QString::fromStdString(session->RemoteAddress()));
 					Utils::Platform::SendTrayNotification(QSystemTrayIcon::Warning, title, body);
 				}
+#endif
 				ret.closeCode = WebSocketCloseCode::AuthenticationFailed;
 				ret.closeReason = "Authentication failed.";
 				return;
@@ -156,6 +158,7 @@ void WebSocketServer::ProcessMessage(SessionPtr session, WebSocketServer::Proces
 		session->SetIsIdentified(true);
 
 		// Send desktop notification. TODO: Move to UI code
+#ifndef OBS_WEBSOCKET_HEADLESS
 		auto conf = GetConfig();
 		if (conf && conf->AlertsEnabled) {
 			QString title = obs_module_text("OBSWebSocket.TrayNotification.Identified.Title");
@@ -163,6 +166,7 @@ void WebSocketServer::ProcessMessage(SessionPtr session, WebSocketServer::Proces
 					       .arg(QString::fromStdString(session->RemoteAddress()));
 			Utils::Platform::SendTrayNotification(QSystemTrayIcon::Information, title, body);
 		}
+#endif
 
 		ret.result["op"] = WebSocketOpCode::Identified;
 		ret.result["d"]["negotiatedRpcVersion"] = session->RpcVersion();
