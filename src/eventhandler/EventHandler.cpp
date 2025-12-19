@@ -342,6 +342,7 @@ void EventHandler::OnFrontendEvent(enum obs_frontend_event event, void *private_
 				signal_handler_t *sh = obs_output_get_signal_handler(streamOutput);
 				signal_handler_connect(sh, "reconnect", StreamOutputReconnectHandler, private_data);
 				signal_handler_connect(sh, "reconnect_success", StreamOutputReconnectSuccessHandler, private_data);
+				signal_handler_connect(sh, "stop", StreamOutputStopHandler, private_data);
 			}
 		}
 		break;
@@ -358,6 +359,7 @@ void EventHandler::OnFrontendEvent(enum obs_frontend_event event, void *private_
 				signal_handler_disconnect(sh, "reconnect", StreamOutputReconnectHandler, private_data);
 				signal_handler_disconnect(sh, "reconnect_success", StreamOutputReconnectSuccessHandler,
 							  private_data);
+				signal_handler_disconnect(sh, "stop", StreamOutputStopHandler, private_data);
 			}
 		}
 		break;
@@ -611,4 +613,13 @@ void EventHandler::StreamOutputReconnectSuccessHandler(void *param, calldata_t *
 	auto eventHandler = static_cast<EventHandler *>(param);
 
 	eventHandler->HandleStreamStateChanged(OBS_WEBSOCKET_OUTPUT_RECONNECTED);
+}
+
+void EventHandler::StreamOutputStopHandler(void *param, calldata_t *data)
+{
+	auto eventHandler = static_cast<EventHandler *>(param);
+
+	const long long code = calldata_int(data, "code");
+	eventHandler->_lastStreamStopCode.store((int)code);
+	eventHandler->_hasLastStreamStopCode.store(true);
 }

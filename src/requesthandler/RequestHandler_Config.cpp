@@ -542,6 +542,14 @@ RequestResult RequestHandler::GetStreamServiceSettings(const Request &)
 	json responseData;
 
 	OBSService service = obs_frontend_get_streaming_service();
+	
+	// Handle case where no streaming service is configured yet
+	if (!service) {
+		responseData["streamServiceType"] = nullptr;
+		responseData["streamServiceSettings"] = json::object();
+		return RequestResult::Success(responseData);
+	}
+
 	responseData["streamServiceType"] = obs_service_get_type(service);
 	OBSDataAutoRelease serviceSettings = obs_service_get_settings(service);
 	responseData["streamServiceSettings"] = Utils::Json::ObsDataToJson(serviceSettings, true);
@@ -578,13 +586,17 @@ RequestResult RequestHandler::SetStreamServiceSettings(const Request &request)
 
 	OBSService currentStreamService = obs_frontend_get_streaming_service();
 
-	std::string streamServiceType = obs_service_get_type(currentStreamService);
+	// Handle case where no streaming service is configured yet (prevent SIGSEGV)
+	std::string streamServiceType;
+	if (currentStreamService)
+		streamServiceType = obs_service_get_type(currentStreamService);
+	
 	std::string requestedStreamServiceType = request.RequestData["streamServiceType"];
 	OBSDataAutoRelease requestedStreamServiceSettings =
 		Utils::Json::JsonToObsData(request.RequestData["streamServiceSettings"]);
 
 	// Don't create a new service if the current service is the same type.
-	if (streamServiceType == requestedStreamServiceType) {
+	if (currentStreamService && streamServiceType == requestedStreamServiceType) {
 		OBSDataAutoRelease currentStreamServiceSettings = obs_service_get_settings(currentStreamService);
 
 		// TODO: Add `overlay` field
