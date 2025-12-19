@@ -88,6 +88,10 @@ private:
 	// Signal handler: output
 	static void StreamOutputReconnectHandler(void *param, calldata_t *data);
 	static void StreamOutputReconnectSuccessHandler(void *param, calldata_t *data);
+	static void StreamOutputStopHandler(void *param, calldata_t *data);
+
+	std::atomic<int> _lastStreamStopCode = 0;
+	std::atomic<bool> _hasLastStreamStopCode = false;
 
 	// General
 	void HandleExitStarted();

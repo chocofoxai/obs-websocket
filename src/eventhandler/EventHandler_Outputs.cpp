@@ -19,6 +19,10 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include "EventHandler.h"
 
+#include <obs.h>
+
+#include <cstring>
+
 static bool GetOutputStateActive(ObsOutputState state)
 {
 	switch (state) {
@@ -56,6 +60,60 @@ void EventHandler::HandleStreamStateChanged(ObsOutputState state)
 	json eventData;
 	eventData["outputActive"] = GetOutputStateActive(state);
 	eventData["outputState"] = state;
+
+	if (state == OBS_WEBSOCKET_OUTPUT_STOPPED) {
+		bool hasStopCode = _hasLastStreamStopCode.exchange(false);
+		if (hasStopCode) {
+			const int stopCode = _lastStreamStopCode.load();
+			eventData["outputStopCode"] = stopCode;
+			const char *reason = nullptr;
+			switch (stopCode) {
+			case 0:
+				reason = "SUCCESS";
+				break;
+			case 1:
+				reason = "BAD_PATH";
+				break;
+			case 2:
+				reason = "CONNECT_FAILED";
+				break;
+			case 3:
+				reason = "INVALID_STREAM";
+				break;
+			case 4:
+				reason = "DISCONNECTED";
+				break;
+			case 5:
+				reason = "UNSUPPORTED";
+				break;
+			case 6:
+				reason = "NO_SPACE";
+				break;
+			case 7:
+				reason = "ENCODE_ERROR";
+				break;
+			default:
+				reason = "ERROR";
+				break;
+			}
+			eventData["outputStopReason"] = reason;
+		} else {
+			eventData["outputStopCode"] = nullptr;
+			eventData["outputStopReason"] = nullptr;
+		}
+
+		OBSOutputAutoRelease streamOutput = obs_frontend_get_streaming_output();
+		if (streamOutput) {
+			const char *lastError = obs_output_get_last_error(streamOutput);
+			if (lastError && std::strlen(lastError) > 0) {
+				eventData["outputLastError"] = lastError;
+			} else {
+				eventData["outputLastError"] = nullptr;
+			}
+		} else {
+			eventData["outputLastError"] = nullptr;
+		}
+	}
 	BroadcastEvent(EventSubscription::Outputs, "StreamStateChanged", eventData);
 }
 
